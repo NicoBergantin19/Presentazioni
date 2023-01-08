@@ -1,0 +1,50 @@
+hostname sicurezza (evitare ena pwd) - cifratura pwd - trattamento interfacce non usate - accesso vty ssh interfacce e description banner evitare richieste dns evitare che i log sulla console interrompano i comandi
+
+
+
+LAN 192.168.10.0/24
+PC1:
+ip 192.168.10.10
+def gate: 192.168.10.1
+
+S1-1 Cose fatte:
+hostname
+banner
+password console cisco
+password-encr
+description fa0/1-2 e 10
+Porte fa0/3-9, fa0/11-24 spente e descritte
+telnet
+ip 192.168.10.100
+def gate: 192.168.10.1
+
+Port-security:
+fa0/10
+mac sticky
+max 1
+violation restrict 
+
+VLAN: 
+1000 unused fa0/3-9, fa0/11-24, gig0/1-2
+
+STP:
+spanning-tree mode rapid-pvst
+
+
+S1-2
+hostname
+banner
+password console
+telnet
+pass-enc
+description porte usate
+ip 192.168.10.105
+def gate: 192.168.10.1
+
+VLAN: 
+1000 unused fa0/4-24, gig0/1-2
+
+EtherChannel:
+fast0/2-3
+channel-group 1
+port-channel 1 allowed vlan 1

